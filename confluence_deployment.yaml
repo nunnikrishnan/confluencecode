@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: confluence-deployment
+  namespace: confluence
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: confluence
+  template:
+    metadata:
+      labels:
+        app: confluence
+    spec:
+      containers:
+        - name: confluence
+          image: atlassian/confluence-server:latest
+          ports:
+            - containerPort: 8090  # Confluence default port
+          env:
+            # Confluence Database Configuration
+            - name: ATLASSIAN_CONFLUENCE_DB_TYPE
+              value: "postgresql"
+            - name: ATLASSIAN_CONFLUENCE_DB_HOST
+              value: "postgres.confluence.svc.cluster.local"  # Internal service name for PostgreSQL
+            - name: ATLASSIAN_CONFLUENCE_DB_PORT
+              value: "5432"
+            - name: ATLASSIAN_CONFLUENCE_DB_USER
+              value: "confluenceuser"  # Same as in PostgreSQL
+            - name: ATLASSIAN_CONFLUENCE_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: confluence-secrets
+                  key: db-password
+            - name: ATLASSIAN_CONFLUENCE_DB_NAME
+              value: "confluencedb"
+            - name: ATLASSIAN_CONFLUENCE_HOME
+              value: /var/atlassian/application-data/confluence
+          volumeMounts:
+            - name: confluence-data
+              mountPath: /var/atlassian/application-data/confluence
+      volumes:
+        - name: confluence-data
+          persistentVolumeClaim:
+            claimName: confluence-pvc
